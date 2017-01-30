@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>我的资料</title>
+    <link href="css/mui.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" type="text/css" href="css/style.min.css"/>
+    <link href="css/mui.picker.min.css" rel="stylesheet" />
+	<link href="css/mui.poppicker.min.css" rel="stylesheet" />
+    <style type="text/css">
+    	html,.mui-content{background-color: #F1F1F1;}
+    	.input_lable{}
+    	.input_box{
+    		font-size: 15px;
+    		color: #777777;
+    		
+    	}
+    	.input_box.input_box_bg{
+    		background: url(images/icon_inputbg.gif) no-repeat;
+    		background-position: right bottom;
+    		background-size: 10px;
+    		padding-right: 20px;
+    	}
+    	.usericon{
+    		width: 60px;
+    		height: 60px;
+    		border-radius: 30px;
+    		margin-right: 20px;
+    	}
+    	.usericon_lable{
+    		line-height: 60px;
+    	}
+    </style>
+</head>
+<body>
+<header class="mybar mui-bar mui-bar-nav">
+    <a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left"></a>
+    <h1 class="mui-title">我的资料</h1>
+    <button class="mui-btn mui-btn-link mui-pull-right" id="saveBtn">保存</button>
+</header>
+<div class="mui-content">
+	<tpl id="profile"></tpl> 
+</div>
+<script src="js/mui.min.js"></script>
+<script src="js/md5.min.js"></script>
+<script src="js/binaryajax.min.js"></script>
+<script src="js/exif.min.js"></script>
+<script src="js/canvasResize.min.js"></script>
+<script src="js/until.min.js"></script>
+<script src="js/app.min.js"></script>
+<script src="js/api.min.js"></script>
+<script src="js/template.min.js"></script>
+<script src="js/mui.picker.min.js"></script>
+<script src="js/mui.poppicker.min.js"></script>
+<script src="js/city.data-3.min.js"></script>
+<script src="js/data_picker.min.js"></script>
+<script type="text/javascript">
+(function($, doc) {
+	var isModify = false;
+	var fromData ={};
+	function plusReady(){
+		var userInfo = App.getUserInfo();console.log(JSON.stringify(userInfo));
+		document.getElementById('profile').innerHTML = template('uc/profile', userInfo);
+		
+		$.currentWebview.show();
+		plus.nativeUI.closeWaiting();
+		
+		var nicknameBtn = doc.getElementById('nicknameBtn');
+		var sexBtn = doc.getElementById('sexBtn');
+		var jobBtn = doc.getElementById('jobBtn');
+		var cityBtn = doc.getElementById('cityBtn');
+		var saveBtn = doc.getElementById('saveBtn');
+		var nicknameBox = doc.getElementById('nicknameBox');
+		var sexBox = doc.getElementById('sexBox');
+		var sexBoxText = doc.getElementById('sexBoxText');
+		var jobBox = doc.getElementById('jobBox');
+		var cityBox = doc.getElementById('cityBox');
+		var mobileBox = doc.getElementById('mobileBox');
+		
+		var userID = App.getUserID();
+	  	fromData.userid = userID;
+	  	fromData.updataType = 'ALL';
+		
+		//监听上传图像
+		document.getElementById("btnUserIcon").addEventListener('tap',function(e) {
+			uploadOne(function(imageData){
+				document.getElementById("userIcon").src = imageData;
+				fromData.file = imageData;
+				isModify = true;
+			});
+			
+		}); 
+		
+		//监听按钮-昵称
+		nicknameBtn.addEventListener('tap',function(event){
+			old = nicknameBox.innerText;
+			event.detail.gesture.preventDefault();
+			mui.prompt('请输入您的昵称', old, APP_NAME, ['取消', '确定'], function(e) {
+				if (e.index == 1 && e.value != "") {
+					nicknameBox.innerText = e.value;
+					fromData.nickname = e.value;
+					isModify = true;
+				}
+			})
+		},false);
+		
+		//监听按钮-性别
+		var sexPicker = new $.PopPicker();
+		sexPicker.setData([{
+			value: '1',
+			text: '男神'
+		}, {
+			value: '0',
+			text: '女神'
+		}]); 
+		sexBtn.addEventListener('tap', function(event) {
+			sex_old = sexBox.value;
+			sexPicker.pickers[0].setSelectedValue(sex_old);
+			sexPicker.show(function(items) {
+				var sexSeleted = items[0];
+				sexBox.value = sexSeleted.value;
+				sexBoxText.innerText = sexSeleted.text;
+				fromData.sex = sexSeleted.value;
+				if(sexSeleted.value != sex_old){
+					isModify = true;
+				}
+			});
+		}, false);
+		
+		//监听按钮-职业
+		var jobPicker = new $.PopPicker();
+		jobPicker.setData(eventJobData);
+		jobBtn.addEventListener('tap',function(event){
+			jobPicker.pickers[0].setSelectedValue(userInfo.job_id);
+			jobPicker.show(function(items) {
+				fromData.job = items[0].value;
+				jobBox.innerText = (items[0] || {}).text;
+			});
+		},false);
+		
+		//监听按钮-地区
+		var cityPicker = new $.PopPicker({layer: 3});
+		cityPicker.setData(cityData3);
+		cityPicker.pickers[0].setSelectedValue(userInfo.province_id);
+		cityPicker.pickers[1].setSelectedValue(userInfo.city_id);
+		cityPicker.pickers[2].setSelectedValue(userInfo.area_id);
+		cityBtn.addEventListener('tap',function(e){
+			cityPicker.show(function(items) {
+				fromData.province_id = (items[0] || {}).value;
+				fromData.city_id = (items[1] || {}).value;
+				fromData.area_id = (items[2] || {}).value;
+				cityBox.innerText = (items[0] || {}).text + " " + (items[1] || {}).text + " " + (items[2] || {}).text;
+				isModify = true;
+			});
+		},false);
+		
+		
+		//监听按钮-保存设置
+		saveBtn.addEventListener('tap',function(event){
+			if(!isModify){
+				alert('您还未做任何修改');
+			}else{
+				$.confirm('您确定保存设置吗？','影人根据地',['确定保存','返回修改'],function(e){
+					if (e.index == 0) {
+						console.log(JSON.stringify(fromData));//return;
+						Api.updateInfo(fromData,function(result){
+							App.setUserInfo(result.userInfo);
+							var ws = plus.webview.currentWebview();//获取当前窗体
+							ws.opener().reload();//刷新上一个窗体
+							plus.webview.close(ws,'slide-out-bottom',600);//关闭当前页面
+							$.toast('修改资料成功');
+						},function(result){
+							alert(result.errmsg);
+						});
+					} 
+				});
+			}
+		},false);
+		
+		//重写返回事件
+		var old_back = $.back;
+		$.back = function(){
+			if(!isModify){
+				old_back();
+			}else{
+				var btn = ["确定离开","返回修改"];
+				$.confirm('确认不保存离开当前窗口吗？','影人根据地',btn,function(e){
+				    if(e.index==0){
+				    	//执行mui封装好的窗口关闭逻辑；
+				    	old_back();
+				    }
+				});
+			}
+		}
+		
+		
+	}
+	if(window.plus){
+		plusReady();
+	}else{
+		document.addEventListener("plusready",plusReady,false);
+	}	
+})(mui, document);
+</script>
+</body>
+</html>
